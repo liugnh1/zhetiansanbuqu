@@ -77,6 +77,12 @@ h1{
   font-size:12px;color:#cfe0ff;border:1px solid #3b5a9e55;background:#16203acc;
   padding:4px 10px;border-radius:999px;
 }
+/* ---------- 天命之路 ---------- */
+#paths{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:100%}
+.pathbtn{display:flex;flex-direction:column;gap:2px;align-items:center;line-height:1.5;min-width:104px}
+.pathbtn small{font-size:11px;color:var(--dim)}
+.pathbtn.on{border-color:var(--gold);background:linear-gradient(180deg,#8a6d2f,#66501f);color:#fff4d6;box-shadow:0 0 10px #d4af3744}
+.pathbtn.on small{color:#ffe9a8}
 #startBtns{display:flex;gap:14px;align-items:center}
 .dip{color:var(--dim);font-size:12px}
 /* ---------- 轮回（局外反哺） ---------- */
@@ -266,6 +272,7 @@ h1{
     <div id="cardsWrap">
       <div id="cards"></div>
       <div id="talents"></div>
+      <div id="paths" title="天命之路：本世专属修行路线"></div>
       <div id="startBtns">
         <button class="btn" id="btnDip" style="font-size:14px">换一世</button>
         <span class="dip" id="dipN">剩余 3 次</span>
@@ -312,6 +319,8 @@ const REALMS=[
  {n:{bd:'祭道之上',hd:'祭道之上',sx:'祭道之上'},lf:0,pw:2.1,exp:0}
 ];
 const WIN_LV=11; // 证道大帝
+/* 境界壁障：突破到 Lv.N 的最低战力（按各层突破时实际战力 p40 标定） */
+const GATE=[0,120,440,1250,2900,6200,12800,25000,51500,96000,181000,370000,700000,2400000];
 
 /* ---------- 体质（化用 世界书/体质 24 种） ---------- */
 const CONSTITUTIONS=[
@@ -368,26 +377,26 @@ const TALENTS=[
 /* ---------- 出身（每个时代约4种，随时代抽取） ---------- */
 const ORIGINS={
  hd:[
-  {n:'石村后生',d:'小村炊烟，兽奶飘香。',fx:{rt:.05,lk:.05}},
-  {n:'武王府嫡系',d:'皇族血脉，锦衣玉食，却也有钩心斗角。',fx:{zz:1}},
-  {n:'补天阁外门弟子',d:'背上的书箱和扫帚一样重。',fx:{rt:.03}},
+  {n:'石村后生',d:'小村炊烟，兽奶飘香。',fx:{rt:.08,lk:.08}},
+  {n:'武王府嫡系',d:'皇族血脉，锦衣玉食，却也有钩心斗角。',fx:{zz:1,p0:20}},
+  {n:'补天阁外门弟子',d:'背上的书箱和扫帚一样重。',fx:{rt:.05}},
   {n:'大荒猎人世家',d:'箭矢与火堆里的传说。',fx:{p0:15}},
   {n:'八域弃子',d:'被遗弃在荒野的婴孩，捡起他的是满地月光。',fx:{lf:-5,p0:10}}
  ],
  bd:[
-  {n:'泰山山麓少年',d:'村口的石阶上刻着古老的符号。',fx:{lk:.05}},
-  {n:'姬家旁支',d:'族谱的边角处，也有你一个名字。',fx:{zz:.5}},
-  {n:'圣地外门杂役',d:'扫了一千级台阶，也听了一千遍讲道。',fx:{rt:.03}},
-  {n:'源坊学徒',d:'赌石的剖刀和碎屑里，藏着机遇。',fx:{lk:.05,p0:5}},
-  {n:'北斗小城布衣',d:'你是这漫长岁月里最普通的一个。',fx:{}},
+  {n:'泰山山麓少年',d:'村口的石阶上刻着古老的符号。',fx:{lk:.08}},
+  {n:'姬家旁支',d:'族谱的边角处，也有你一个名字。',fx:{zz:.5,p0:10}},
+  {n:'圣地外门杂役',d:'扫了一千级台阶，也听了一千遍讲道。',fx:{rt:.05}},
+  {n:'源坊学徒',d:'赌石的剖刀和碎屑里，藏着机遇。',fx:{lk:.08,p0:5}},
+  {n:'北斗小城布衣',d:'你是这漫长岁月里最普通的一个。',fx:{lk:.04}},
   {n:'荒古世家旁系',d:'祖厅里供奉着褪色的帝字。',fx:{zz:.5,lf:5}}
  ],
  sx:[
-  {n:'都市学生',d:'以为人生只有考卷，直到灵气从地底升起。',fx:{lk:.05}},
+  {n:'都市学生',d:'以为人生只有考卷，直到灵气从地底升起。',fx:{lk:.08}},
   {n:'山村少年',d:'山里没有信号，但有一口活着的井。',fx:{zz:1}},
-  {n:'研究所成员',d:'你的论文题目是《电离层异常观测》，后来你知道了那是什么。',fx:{lk:.06}},
+  {n:'研究所成员',d:'你的论文题目是《电离层异常观测》，后来你知道了那是什么。',fx:{lk:.1}},
   {n:'地狱遗孤',d:'生与死只隔一道门，你摸到了那扇门。',fx:{p0:20,lf:-10}},
-  {n:'边境守碑人',d:'石碑上没有字，只有雷电烧过的痕迹。',fx:{lf:12,rt:.03}}
+  {n:'边境守碑人',d:'石碑上没有字，只有雷电烧过的痕迹。',fx:{lf:12,rt:.05}}
  ]
 };
 
@@ -457,10 +466,10 @@ E({e:'hd',m:45,M:160,p:1,k:'yu',fx:{x:700,p:150},c:s=>s.level>=5,t:'你在深夜
 E({e:'hd',m:50,M:200,p:1,k:'huo',g:1,need:2500,failL:30,die:'jie',t:'末法之劫碾过诸域，灵气一寸寸退去如潮水。你立在潮头，与这一纪元争夺最后一口灵气。',t2:'大道衰微，诸天渐寂。你抱着残谱枯坐山中，把一条路的尽头，坐成自己的开篇。'});
 E({e:'hd',m:60,M:220,p:1,k:'yu',fx:{x:800,p:200},c:s=>s.level>=7,t:'虚道之中，你坐了不知几度春秋。出来时人间换了三代，你只说：快了。'});
 E({e:'hd',m:70,M:260,p:1,k:'huo',g:1,fx:{need:4000,failL:35,p:1000},t:'仙古一角重现，天倾地覆的一战在岁月对面打响。你伸手接住一粒飞来的血珠，掌心滚烫。'});
-E({e:'hd',m:90,M:320,p:1,k:'ji',g:1,fx:{x:800,p:1500},c:s=>s.level>=9,t:'你于天庭废墟之上受万灵朝拜。残破的帝座明明空了一万年，你扶上去时，天边却响了十二声钟。'});
+E({e:'hd',m:90,M:320,p:1,k:'ji',g:1,fx:{need:140000,failL:20,x:800,p:1500},c:s=>s.level>=9,t:'你于天庭废墟之上受万灵朝拜。残破的帝座明明空了一万年，你扶上去时，天边却响了十二声钟。'});
 E({e:'hd',m:110,M:400,p:1,k:'yu',g:1,fx:{x:1500,p:300},c:s=>s.level>=9,chg:1,t:'你俯仰天地，望见一道刀痕斩断万古——那是荒天帝留下的剑意。你久久不语，目中映出一段独行岁月的路。'});
 E({e:'hd',m:25,M:220,p:.7,k:'ji',fx:{x:120,p:40},t:'你在一座荒城听人讲古：那个三岁牛饮、九岁弯石弓的孩子，后来成了荒。'});
-E({e:'hd',m:100,M:420,p:1,k:'yu',fx:{x:1000,p:400},c:s=>s.level>=10,t:'荒塔之侧，你听见诸天的呼吸。有人曾以一塔镇一界——你伸手触塔，万古的风停了一瞬。'});
+E({e:'hd',m:100,M:420,p:1,k:'yu',fx:{need:260000,failL:25,x:1000,p:400},c:s=>s.level>=10,t:'荒塔之侧，你听见诸天的呼吸。有人曾以一塔镇一界——你伸手触塔，万古的风停了一瞬。'});
 E({e:'hd',m:80,M:999,p:1,k:'yu',fx:{x:900,p:250},c:s=>s.level>=10,t:'你于晚年回望大荒。八域、帝关、荒塔，一路走来的风雪，都被你酿成了道。'});
 
 /* ================= 北斗纪元（遮天） ================= */
@@ -480,15 +489,15 @@ E({e:'bd',m:24,M:70,p:.9,k:'huo',die:'su',fx:{need:400,failL:15,p:220},t:'宿敌
 E({e:'bd',m:25,M:100,p:1,k:'yu',fx:{x:480,p:60},t:'姜太虚的经意悬于虚空一角。你参悟数日，只悟得一句话，却重逾千斤——世间情义，譬如救人于绝处。'});
 E({e:'bd',m:28,M:90,p:1,k:'huo',g:1,fx:{need:800,failL:22,x:350,p:300,t2:''},t:'太初古矿深处，一双眼睛隔着黑暗缓缓睁开。那一瞬你明白了：有些东西，不是用来挖的。',t2:'古矿深处有仙坟似的气息。你转身就走，背后传来一道声音：「后生，下次别来。」'});
 E({e:'bd',m:30,M:90,p:1,k:'yu',fx:{x:550,p:90},t:'你盘坐道台之上，听了一夜风声，忽有「道」字在眉心一闪。低头看时，掌心的纹路与天上的星辰重合了一瞬。'});
-E({e:'bd',m:34,M:110,p:1,k:'yu',fx:{x:750,p:150},c:s=>s.level>=5,t:'无始钟声自远古传来，万古皆寂。你的道心在那一声里被重新锻过一次。'});
+E({e:'bd',m:34,M:110,p:1,k:'yu',fx:{need:30000,failL:12,x:750,p:150},c:s=>s.level>=5,t:'无始钟声自远古传来，万古皆寂。你的道心在那一声里被重新锻过一次。'});
 E({e:'bd',m:36,M:120,p:1,k:'yu',fx:{p:180,x:400},c:s=>s.level>=4,t:'你在紫山残址拾到一枚锈迹斑斑的铃铛。按说它早该朽了，可当你拿起它，风都不再吹。'});
 E({e:'bd',m:40,M:130,p:1,k:'ji',g:1,fx:{need:800,x:420,p:500},t:'帝路争锋，强者如林。你在帝路上活下来，一路走，一路有人从后面顶上来——这就是成帝之路。'});
 E({e:'bd',m:44,M:140,p:1,k:'yu',fx:{x:600,p:100},c:s=>s.level>=5,t:'五色祭坛亮起，通往无尽星空的古路在你面前铺开。你听见星空深处有谁在念你的名字——不像恶意。'});
-E({e:'bd',m:48,M:150,p:1,k:'yu',fx:{x:650,p:150},c:s=>s.level>=5,t:'星空古路尽头有一座无字碑。碑下有人说：等一个能读懂它的人。你站了一夜，什么都没读懂，却把路读懂了。'});
-E({e:'bd',m:50,M:160,p:1,k:'yu',g:1,fx:{x:800,p:200},c:s=>s.level>=6,t:'青帝扎根天地间，你登山一拜。罡风扑面，帝影垂青，一滴绿意入你眉心——不出奇，只是久远的约定。'});
+E({e:'bd',m:48,M:150,p:1,k:'yu',fx:{need:30000,failL:12,x:650,p:150},c:s=>s.level>=5,t:'星空古路尽头有一座无字碑。碑下有人说：等一个能读懂它的人。你站了一夜，什么都没读懂，却把路读懂了。'});
+E({e:'bd',m:50,M:160,p:1,k:'yu',g:1,fx:{need:45000,failL:12,x:800,p:200},c:s=>s.level>=6,t:'青帝扎根天地间，你登山一拜。罡风扑面，帝影垂青，一滴绿意入你眉心——不出奇，只是久远的约定。'});
 E({e:'bd',m:50,M:170,p:1,k:'yu',g:1,fx:{x:700,p:100},c:s=>s.level>=5,t:'青铜面具的身影一闪而过。你听见一段未曾听过的歌谣：不为成仙，只为在红尘等你回来。'});
 E({e:'bd',m:52,M:170,p:1,k:'yu',fx:{x:900,p:250},c:s=>s.level>=7,t:'无始经字字如钟，敲进你骨子里。终有一天你也懂了那句：我观天界，犹观一尘。'});
-E({e:'bd',m:55,M:170,p:1,k:'yu',fx:{x:900,p:120},c:s=>s.level>=7,t:'斩道之年，你一刀劈开自己的执念。刀光落处，尘世千般，皆成一声长叹。'});
+E({e:'bd',m:55,M:170,p:1,k:'yu',fx:{need:52000,failL:12,x:900,p:120},c:s=>s.level>=7,t:'斩道之年，你一刀劈开自己的执念。刀光落处，尘世千般，皆成一声长叹。'});
 E({e:'bd',m:60,M:180,p:1,k:'huo',g:1,fx:{need:2500,failL:28,p:1000},t:'不死天皇的无上威压铺天盖地，无始的虚空无声镇压。你夹在两位超然存在之间——这天地，从来只容一人凌绝顶。'});
 E({e:'bd',m:60,M:210,p:1,k:'huo',g:1,die:'an',fx:{need:2000,failL:32,p:1300},t:'黑暗动乱。禁区至尊出关，众生如蚁。你挡在众生之前，那夜的星空从未见过那么多血。'});
 E({e:'bd',m:62,M:150,p:1,k:'yu',fx:{x:500,p:100},c:s=>s.level>=5,t:'你偶入一座古圣城，城头有位白发老仙人对你说：「年轻人，你的道岔了半步。」他随手一指，你的境界竟真的稳固了一分。'});
@@ -496,8 +505,8 @@ E({e:'bd',m:64,M:180,p:1,k:'ji',fx:{x:450,p:60},c:s=>s.level>=5,t:'古墟天街�
 E({e:'bd',m:66,M:200,p:1,k:'huo',fx:{need:1000,failL:16},t:'你的仇家请动大能封路。那一战没有输赢，只有生死之间明白的一条理：强一步，海阔天空。'});
 E({e:'bd',m:70,M:230,p:1,k:'yu',fx:{x:900,p:150},c:s=>s.level>=7,t:'你于午夜望月，月华如刃，劈开你境界中的一丝杂念。修行是苦的，可这一夜的月光真干净。'});
 E({e:'bd',m:72,M:240,p:1,k:'huo',g:1,fx:{need:6000,failL:35,p:1800},t:'至尊战场上，你与一位自斩至尊交手。他活过太多年了，久到连他自己都忘了为什么要活。你问了他一个问题，他的刀顿了顿。'});
-E({e:'bd',m:80,M:260,p:1,k:'yu',g:1,fx:{x:900,p:260},c:s=>s.level>=8,t:'又是九龙拉棺过境。这一次棺影掠过天际，你仰头直视——百年前你挤在人群里，如今星空认得你。'});
-E({e:'bd',m:85,M:270,p:1,k:'yu',fx:{p:900,x:400},c:s=>s.level>=8,t:'帝兵垂落，择你为主。你伸手握住帝兵的那一刻，掌心传来一句跨越数十万年的叹息：你来了。'});
+E({e:'bd',m:80,M:260,p:1,k:'yu',g:1,fx:{need:85000,failL:15,x:900,p:260},c:s=>s.level>=8,t:'又是九龙拉棺过境。这一次棺影掠过天际，你仰头直视——百年前你挤在人群里，如今星空认得你。'});
+E({e:'bd',m:85,M:270,p:1,k:'yu',fx:{need:90000,failL:18,p:900,x:400},c:s=>s.level>=8,t:'帝兵垂落，择你为主。你伸手握住帝兵的那一刻，掌心传来一句跨越数十万年的叹息：你来了。'});
 E({e:'bd',m:90,M:300,p:1,k:'yu',g:1,fx:{x:1200,p:300},c:s=>s.level>=9,t:'无始钟又响了。这一次不是远方，而是你心里——那钟声里有一句没说的话：后来者，不必像我。'});
 E({e:'bd',m:92,M:320,p:1,k:'ji',g:1,fx:{x:700,p:220},c:s=>s.level>=9,t:'一世的香供奉在碑前，是墓中人写给「第几世」的我来者。你立时惊醒——轮回不是传说，是你脚下的路。'});
 E({e:'bd',m:12,M:16,p:1.2,k:'ji',fx:{x:50,p:15},c:s=>s.born.n==='泰山山麓少年',t:'村口石阶上的符号竟然在月圆之夜亮起。你沿着它走了一遍，像是在等一种很古老的脚步声。'});
@@ -527,9 +536,9 @@ E({e:'sx',m:35,M:120,p:1,k:'ji',fx:{x:320,p:90},t:'枯石老者传你一句话�
 E({e:'sx',m:38,M:130,p:1,k:'huo',g:1,fx:{need:1400,failL:22,p:600,x:500},t:'神尸坠落，压在成城的废墟上。你站在废墟边，摸到那具神尸的体温——那温度，比人心还烫。'});
 E({e:'sx',m:40,M:150,p:1,k:'yu',fx:{x:600,p:180},c:s=>s.level>=5,t:'魂河渡口，老者撑篙。你不语，他亦不语。临上岸他忽说：此河不渡无心人。'});
 E({e:'sx',m:45,M:160,p:1,k:'ji',g:1,fx:{x:700,p:220},c:s=>s.level>=6,t:'百亿凡人的念力如洪。你立在城市上空，听见千万家的灯火发亮——人道的暖意，也是一种道。'});
-E({e:'sx',m:50,M:170,p:1,k:'yu',g:1,fx:{x:900,p:300},c:s=>s.level>=7,t:'你抬头望向星空——诸天映照而下，无数世界的轮廓在你眼底依次点亮。你在其中看到一颗很亮的星，像是回家。'});
+E({e:'sx',m:50,M:170,p:1,k:'yu',g:1,fx:{need:60000,failL:15,x:900,p:300},c:s=>s.level>=7,t:'你抬头望向星空——诸天映照而下，无数世界的轮廓在你眼底依次点亮。你在其中看到一颗很亮的星，像是回家。'});
 E({e:'sx',m:52,M:180,p:1,k:'yu',g:1,fx:{x:800,p:260},c:s=>s.level>=7,t:'你看见一道背影立于荒野，一剑独断万古。翻遍史册无名氏，后人只说：荒。',chg:1});
-E({e:'sx',m:55,M:200,p:1,k:'yu',fx:{x:1200,p:400},c:s=>s.level>=8,t:'天渊中沉浮着一片残破宇宙。你伸出手替它拨正一角——宇宙松了口气，你也松了口气。'});
+E({e:'sx',m:55,M:200,p:1,k:'yu',fx:{need:110000,failL:20,x:1200,p:400},c:s=>s.level>=8,t:'天渊中沉浮着一片残破宇宙。你伸出手替它拨正一角——宇宙松了口气，你也松了口气。'});
 E({e:'sx',m:60,M:210,p:1,k:'huo',g:1,fx:{need:5000,failL:36,p:1800},need2:1,t:'厄土之战。活命泉水滋生的敌人无穷无尽，你杀到第十一夜，刀钝了，天没亮。'});
 E({e:'sx',m:70,M:240,p:1,k:'yu',g:1,fx:{x:1000,p:300},c:s=>s.level>=8,t:'雾村尽头，猫脸老人朝你笑了笑。你转身离开时，发现袖口内悄悄多了两道符文。'});
 E({e:'sx',m:80,M:260,p:1,k:'ji',g:1,fx:{p:3000,x:800,need:8000,failL:40},t:'诡异始祖自厄土而出，诸天收割。你站在最前面，想起了荒古帝关、北斗动乱——原来都是一场大祭的几章。'});
@@ -595,6 +604,23 @@ E({e:'all',m:92,M:900,p:1,k:'huo',c:s=>s.maxLife-s.age<=6,fx:{l:-7},t:'一场大
 E({e:'all',m:46,M:460,p:1,k:'yu',g:1,chg:1,c:s=>s.level>=7,fx:{x:600,p:160},t:'你行至一片荒原，想起一个名字——那名字属于一个把刀留在万古之后的刀客。风穿过你的发梢，像是替他应了一声。'});
 E({e:'all',m:88,M:900,p:1,k:'yu',g:1,fx:{x:900,p:500,need:6000,failL:30},c:s=>s.level>=10,t:'上苍之上一声雷响，你的道行没来由地沉了一沉。你望着天，缓缓笑了：来的正好。'});
 
+/* ================= 出身专属（每个出身一段命数） ================= */
+E({e:'all',m:12,M:16,p:1,k:'yu',c:s=>s.born.n==='石村后生',fx:{x:120,p:15},t:'村口老槐下，白发老者看你练拳看了整整一日。夜里，你的拳风里多了一丝说不清的劲。'});
+E({e:'all',m:14,M:22,p:1,k:'ji',c:s=>s.born.n==='武王府嫡系',fx:{need:120,p:60,x:80},t:'家宴夺嫡，席间一杯毒茶转过三桌。你接过时没喝，只是笑：这杯，该敬谁？'});
+E({e:'all',m:16,M:26,p:1,k:'ji',c:s=>s.born.n==='补天阁外门弟子',fx:{x:160,p:20},t:'扫阶十年，你忽然听见第一万级石阶上有回音——那是从前的扫地人留给你的半句口诀。'});
+E({e:'all',m:13,M:18,p:1,k:'huo',c:s=>s.born.n==='大荒猎人世家',fx:{need:60,failL:6,p:25,x:40},t:'进山遇熊，你拉满了祖上传下来的那把弓。箭出时，你听见了父亲那句：先射它的眼睛。'});
+E({e:'all',m:14,M:20,p:1,k:'yu',c:s=>s.born.n==='八域弃子',fx:{l:8,x:70},t:'养你长大的猎人把你的名字刻在了腰间兽皮上。他说：有名字的人，就有家。'});
+E({e:'all',m:16,M:24,p:1,k:'ji',c:s=>s.born.n==='泰山山麓少年',fx:{need:100,p:30,x:90},t:'石阶符号在月圆夜再亮。你沿它走到尽头——那里放着一枚石印，刻着两个字：后来。'});
+E({e:'all',m:18,M:28,p:1,k:'ji',c:s=>s.born.n==='姬家旁支',fx:{x:120,p:25},t:'族会你排在末席。旁系长老路过时丢下一句：旁支的孩子，更要学会把名字写进族谱。'});
+E({e:'all',m:20,M:30,p:1,k:'yu',c:s=>s.born.n==='圣地外门杂役',fx:{x:140},t:'你扫完最后一级台阶那天下雨，一只湿漉漉的幼狐叼来一枚带字的松果。字是：三百年还你。'});
+E({e:'all',m:18,M:24,p:1,k:'yu',c:s=>s.born.n==='源坊学徒',fx:{p:120,x:60},t:'一刀下去石皮落地，露出拇指大的鸡血石——这是你赌石生涯第一块石王。师父说：运气也是本事。'});
+E({e:'all',m:20,M:28,p:1,k:'ji',c:s=>s.born.n==='北斗小城布衣',fx:{x:80,p:20},t:'镇口老丈的茶摊上，你听了一辈子没听完的江湖。今日他说：小友，你面相像个人物。'});
+E({e:'all',m:22,M:32,p:1,k:'ji',c:s=>s.born.n==='荒古世家旁系',fx:{need:200,p:50,x:100},t:'祖厅帝字在雷夜里微微发烫。你跪了整夜，起来时，掌中多了一道极淡的帝痕。'});
+E({e:'all',m:16,M:22,p:1,k:'ji',c:s=>s.born.n==='都市学生',fx:{x:90,p:30},t:'晚自习，窗外的雾里站着一个没有脸的影子。你看了它一眼，它退了一步——从那天起，你上课开始走神。'});
+E({e:'all',m:14,M:20,p:1,k:'yu',c:s=>s.born.n==='山村少年',fx:{l:6,x:100},t:'古井又响。这次你听见的是自己的名字在井底回响。你往井里投了一枚石子，它回敬你一朵浪。'});
+E({e:'all',m:18,M:26,p:1,k:'ji',c:s=>s.born.n==='研究所成员',fx:{x:110,p:35},t:'监测数据连续七天出现同一正弦波。你把曲线画在纸上，忽然发现它和某段碑拓完全重合。'});
+E({e:'all',m:12,M:18,p:1,k:'yu',c:s=>s.born.n==='地狱遗孤',fx:{need:50,p:40,x:60},t:'门缝里又传声。你蹲下来轻声问：我没开门，你从哪来？声音安静了很久：那你再开一次试试。'});
+E({e:'all',m:16,M:26,p:1,k:'ji',c:s=>s.born.n==='边境守碑人',fx:{need:60,p:30,x:90},t:'雷雨夜碑身又亮。你第一次敢把手指按上去——滚烫，像在应和你的心跳。'});
 //__EV_DEF__
 const EVENTS=E_;
 /* ===================== 引擎 ===================== */
@@ -629,7 +655,7 @@ function expNeed(s){
   return Math.round(e*k);
 }
 function bdChance(s,lv){
-  if(lv>=10)return clamp((.02+.045*Math.max(0,s.zz-4)+s.C.rt*.025+s.mods.brk*.3)*(s.C.di||1), .02,.45); /* 大帝劫：天堑中的天堑——资质<5 几乎照面即死，资质9+好体质才配问鼎 */
+  if(lv>=10)return clamp((.025+.045*Math.max(0,s.zz-4)+s.C.rt*.025+s.mods.brk*.3)*(s.C.di||1), .025,.45); /* 大帝劫：天堑中的天堑——资质<5 几乎照面即死，资质9+好体质才配问鼎 */
   /* 常规突破：境界有「资质+3」的根骨上限，越级缺口每大 1 层成功率 -11% */
   const gap=Math.max(0,(lv+1)-(s.zz+3));
   return clamp(.46+s.zz*.04+s.C.rt*.045+s.mods.brk-gap*.11, .10,.92);
@@ -673,8 +699,10 @@ function rollLife(baseState,meta){ // meta=局外轮回加成（UI 传入；sim 
     age:10,level:0,exp:0,power:0,maxLife:60,big:[],flags:{},rng:R,seen:{},
     finish:null,hidden:null};
   s.power=Math.round(zz*2+(born.fx?(born.fx.p0||0):0)+(c.pw0||0)+(born.fx?0:0));
+  s.bornRt=1+((born.fx&&born.fx.rt)||0); /* 出身悟性（rt 原为死字段，接入） */
   // 模组结算
   m.luck*=c.luck;
+  if(born.fx&&born.fx.lk)m.luck*=(1+(born.fx.lk||0)); /* 出身气运（lk 原为死字段，接入） */
   if(c.halve)m.halve+=c.halve;
   for(const t of talents){
     const k=t.k,f=t.f;
@@ -727,7 +755,7 @@ function tickYear(s){
   s.age++;
   const a=s.age;
   // ===== 修炼 =====
-  let g=(Math.pow(s.zz,2.05)*.22+R()*3.2)*(1+s.level*.30)*s.C.rt; /* 资质非线性：低资质中期即见顶，天才快 */
+  let g=(Math.pow(s.zz,2.05)*.22+R()*3.2)*(1+s.level*.30)*s.C.rt*s.bornRt; /* 资质非线性：低资质中期即见顶，天才快；bornRt=出身悟性 */
   if(m.gain)g*=m.gain;
   if(m.late)g*=(a<60?.7:1.6);
   if(m.gao)g*=(s.level>=8?1.35:.85);
@@ -740,6 +768,13 @@ function tickYear(s){
   // ===== 突破 =====
   if(s.exp>=need){
     const lv=s.level;
+    const gate=GATE[lv+1]||0;
+    if(gate&&s.power<gate){ /* 境界壁障：战力不够，修为再满也上不去 */
+      if(s.flags.gLv!==lv+1||a-(s.flags.gAt||0)>12){
+        s.flags.gLv=lv+1;s.flags.gAt=a;
+        logs.push({a,k:'huo',t:'境界壁障——你早该突破了，憾有线力未逮。战力 '+fmt(s.power)+'，过钟 '+fmt(gate)+'，方证此道。'});
+      }
+    }else
     if(lv===10){ /* 准帝→大帝·天劫，劫败200年内道基未愈，不可再渡 */
       if(s.flags.diJieAt&&a<s.flags.diJieAt){/* 余烬未息 */ }
       else{
@@ -807,7 +842,7 @@ function tickYear(s){
   }
   s.exp=Math.min(s.exp,expNeed(s)*1.5);
   // ===== 事件 =====
-  let evChance=.46*m.luck;
+  let evChance=.40*m.luck;
   if(evChance>.92)evChance=.92;
   if(!dead&&!winEnd&&R()<evChance){
     let pool=EVENTS.filter(v=>(v.e==='all'||v.e===s.era)&&a>=v.m&&a<=v.M&&(!v.c||v.c(s))&&(!s.seen[v.id]||a-s.seen[v.id]>(45+Math.floor(a*.15)*(v.g?1.5:1)))); /* 防重窗口随年龄增长：大事件×1.5 → 500岁约120年一重现 */
@@ -845,13 +880,13 @@ function tickYear(s){
           const ratio=s.power/needEff;
           const killP=ratio<.45?.6:(ratio<.75?.35:.12);
           const red=Math.min(.75,m.halve);
-          let willDie=(f.killOnFail||(R()<killP));
+          let willDie=(f.killOnFail||(ev.k==='huo'&&R()<killP)); /* 机缘/际遇门槛失败=重伤折寿；灾祸门槛失败才可能毙命 */
           if(willDie&&m.save){willDie=false;m.save=0;s.maxLife=s.age+5;s.power=Math.round(s.power*.3);s.flags.saveUsed=1;logs.push({a,k:'ji',t:'断臂求生——你在阎王殿门口折返（此生仅此一次）。'});}
           if(willDie){
             dead=true;dyEnd=dieRaw||'xue';
             logs.push({a,k:'huo',t:ev.t.split('——')[0].trim()+'…… 你没能站起来。'});
           }else{
-            const dmg=(failLRaw||16)*1.5*(1-red)*(1+(1-ratio));
+            const dmg=Math.min(60,(failLRaw||16)*1.5*(1-red)*(1+(1-ratio))); /* 机缘强求失败：重伤但不过六十寿 */
             s.maxLife=Math.max(12,s.maxLife-dmg);
             s.power=Math.round(s.power*.95);
             s.flags.wounded=1;
@@ -997,18 +1032,17 @@ function addPoints(p){
   saveMeta();updateMetaUI();
 }
 function upgrade(type){
-  /* 成本按已购次数递增：防无限刷满；效果封顶 */
-  const caps={high:30,pw:300,life:150,zz:30};
+  /* 成本按已购次数递增：防无限刷满；初始战力无上限 */
+  const caps={high:30,life:150,zz:30};
   const rows=META.rows||{};
   if(type==='high'&&(META.highProb||0)>=caps.high){alert('高阶体质已达上限 30%！');return;}
   if(type==='zz'&&(META.zzProb||0)>=caps.zz){alert('高阶资质已达上限 30%！');return;}
-  if(type==='pw'&&(META.initPower||0)>=caps.pw){alert('初始战力已达上限 300！');return;}
   if(type==='life'&&(META.initLife||0)>=caps.life){alert('初始寿元已达上限 150！');return;}
   const cost=costOf(type);
   if((META.points||0)<cost){alert('尘缘点不足！当前一级需 '+cost+' 点');return;}
   META.points-=cost;
   if(type==='high')META.highProb=Math.min(caps.high,(META.highProb||0)+1.5);
-  else if(type==='pw')META.initPower=Math.min(caps.pw,(META.initPower||0)+5);
+  else if(type==='pw')META.initPower=(META.initPower||0)+5; /* 无上限：多活几世就是多几分帝威 */
   else if(type==='life')META.initLife=Math.min(caps.life,(META.initLife||0)+3);
   else if(type==='zz')META.zzProb=Math.min(caps.zz,(META.zzProb||0)+1);
   rows[type]=(rows[type]||0)+1;META.rows=rows;
@@ -1026,7 +1060,7 @@ $('upgradePanel').addEventListener('click',function(e){
   grid.innerHTML=Engine.REALMS.map(function(R,i){
     return '<div class="rl-row"><b>Lv.'+i+'</b><span>'+[R.n.bd,R.n.hd,R.n.sx].join(' / ')+'</span><span style="text-align:right">寿+'+R.lf+' · 修'+R.exp+'</span></div>';
   }).join('')+
-  '<div class="rl-foot">突破有根骨上限：通常资质决定了你能走到第几境——资质 3 者死于化龙/仙台是常态，资质 9 才有问鼎之资。体质(帝劫系数)与天赋(道心通明等)可抬高此限。｜Lv.11 证道大帝（战力约 40 万方至）｜Lv.12/13 为隐藏链：仅圣体/道胎/混沌等成帝之后仍能前行</div>';
+  '<div class="rl-foot">突破有三关：① 根骨（资质+3 上限）② <b style="color:var(--gold2)">战力壁障</b>（每一层境都有最低战力，不够则修为再满也被拦下）③ 机缘。资质 3 者死于化龙/仙台是常态，资质 9 才是问鼎之才。｜Lv.11 证道大帝｜Lv.12/13 为隐藏链：仅圣体/道胎/混沌等成帝之后仍能前行</div>';
 })();
 /* ---------- 成就 · 结局图鉴（localStorage: ztAch） ---------- */
 const END_HINT={
@@ -1146,13 +1180,23 @@ resizeS();buildStars();drawStars();
 
 /* ---------- 开局 —— 抽卡 ---------- */
 const TLAB=['极差','平庸','普通','尚可','中上','上佳','极佳','天才','天纵','妖孽'];
+function bornDesc(b){ /* 出身加成描述：让"有啥区别"一眼可见 */
+  const f=b.fx||{};const p=[];
+  if(f.rt)p.push('悟性+'+Math.round(f.rt*100)+'%');
+  if(f.lk)p.push('气运+'+Math.round(f.lk*100)+'%');
+  if(f.zz)p.push('资质+'+f.zz);
+  if(f.p0)p.push('初始战力+'+f.p0);
+  if(f.lf)p.push((f.lf>0?'寿元+':'寿元')+f.lf);
+  if(f.life)p.push((f.life>0?'寿元+':'寿元')+f.life);
+  return p.join(' · ');
+}
 function renderCards(){
   const s=cur;
   const eraCn={hd:'荒古',bd:'北斗',sx:'圣墟'}[s.era];
   const rz=s.C.w<=2?['万中无一','#ff8a7a']:s.C.w<=6?['人中龙凤','#f0c66b']:['芸芸众生','#9aa0b5'];
   $('cards').innerHTML=
     '<div class="card"><div class="ct">时代</div><div class="c1">'+eraCn+'纪元</div><div class="c2">'+Engine.ERA_INTRO[s.era]+'</div></div>'+
-    '<div class="card"><div class="ct">出身</div><div class="c1">'+s.born.n+'</div><div class="c2">'+s.born.d+'</div></div>'+
+    '<div class="card"><div class="ct">出身</div><div class="c1">'+s.born.n+'</div><div class="c2">'+s.born.d+(bornDesc(s.born)?'<br><b style="color:var(--gold2)">【'+bornDesc(s.born)+'】</b>':'')+'</div></div>'+
     '<div class="card"><div class="ct">资质</div><div class="c1">'+s.zz+' 级</div><div class="c2">'+(s.zz>=8?'★'.repeat(5):'★'.repeat(Math.ceil(s.zz/2)))+' · '+TLAB[s.zz-1]+'</div></div>'+
     '<div class="card"><div class="ct">初始战力 · 寿元</div><div class="c1">'+Engine.fmt(s.power)+' · '+s.maxLife+'年</div><div class="c2">'+rz[0]+'之相</div></div>'+
     '<div class="card wide"><div class="ct">体质 · <span style="color:'+rz[1]+'">'+rz[0]+'</span></div><div class="c1" style="color:'+cdTag(s.C)+'">'+s.C.n+'</div><div class="c2">'+s.C.note+'</div></div>';
@@ -1164,11 +1208,31 @@ $('btnDip').onclick=function(){
   if(dipCnt>0){dipCnt--;fresh();}
   $('dipN').textContent='剩余 '+dipCnt+' 次'+(dipCnt?'':'（尘缘已定）');
 };
+/* ---------- 天命之路（开局三选一，本世自选） ---------- */
+const PATHS=[
+ {n:'登天路',d:'修为+10% · 寿元-15',app:function(s){s.mods.gain*=1.1;s.maxLife=Math.max(20,s.maxLife-15);}},
+ {n:'战魔路',d:'战力成长+15% · 突破-3%',app:function(s){s.mods.pw*=1.15;s.mods.brk-=.03;}},
+ {n:'青灯路',d:'寿元+30 · 门槛-10% · 修为-8%',app:function(s){s.mods.def+=.1;s.mods.gain*=.92;s.maxLife+=30;}}
+];
+let curPath=0;
+function renderPathUI(){
+  $('paths').innerHTML=PATHS.map(function(p,i){
+    return '<button class="btn btn-sm pathbtn'+(i===curPath?' on':'')+'" data-pi="'+i+'">'+p.n+'<small>'+p.d+'</small></button>';
+  }).join('');
+}
+$('paths').addEventListener('click',function(e){
+  const b=e.target.closest('[data-pi]');if(!b)return;
+  curPath=+b.dataset.pi;renderPathUI();
+});
+renderPathUI();
 $('btnGo').onclick=beginLife;
 function beginLife(){
   S=Engine.rollLife({seed:(Date.now()>>>0)^((Math.random()*1048576)|0)},META);
   // 受重选影响不大：开局直接使用当前抽卡结果
   if(cur){S=cur;cur=null;}
+  /* 应用天命之路 */
+  PATHS[curPath].app(S);
+  S.intro.push({a:0,k:'yu',t:'【天命之路 · '+PATHS[curPath].n+'】'+PATHS[curPath].d});
   $('start').style.display='none';
   $('game').style.display='flex';
   $('log').innerHTML='';
