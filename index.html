@@ -116,6 +116,9 @@ h1{
 #achEnds .ae.on{color:#b9bece;background:#10162acc}
 #achEnds .ae.off{color:#565b6e}
 #achEnds .ae b{color:var(--gold2);font-weight:700}
+/* ---------- 帝兵炼器 ---------- */
+#relicBar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;font-size:11px;color:var(--dim)}
+#relicBar b{color:var(--gold2)}
 /* ---------- 本机排行榜 ---------- */
 #rankList{width:100%;max-width:560px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 14px;text-align:left;font-size:12px;color:var(--dim)}
 #rankList summary{cursor:pointer;color:var(--golddim);letter-spacing:1px;user-select:none}
@@ -219,7 +222,7 @@ h1{
   <div id="game">
     <div id="statbar">
       <div class="st"><div class="k">岁月</div><div class="v" id="stAge">10<span style="font-size:12px;color:var(--dim)"> / 80</span></div></div>
-      <div class="st"><div class="k">境界 · 修为</div><div class="v small" id="stLv">凡人</div><div id="expbar"><div id="expfill"></div></div></div>
+      <div class="st"><div class="k">境界 · 修为</div><div class="v small" id="stLv">凡人</div><div id="expbar"><div id="expfill"></div></div><div id="stEro" style="font-size:10px;color:var(--dim);margin-top:3px">侵蚀 0</div></div>
       <div class="st"><div class="k">战力</div><div class="v gold" id="stPw">0</div></div>
       <div class="st"><div class="k">资质 / 时代</div><div class="v small" id="stZz">5 · 北斗</div></div>
     </div>
@@ -254,6 +257,11 @@ h1{
         <button class="btn btn-sm" data-up="pw" data-n="战力 +5">战力 +5</button>
         <button class="btn btn-sm" data-up="life" data-n="寿元 +3">寿元 +3</button>
       </div>
+      <div id="relicBar">
+        <span>帝兵库 <b id="relicCount">0</b> 件 · <span id="relicActive">未随身</span></span>
+        <button class="btn btn-sm" id="btnRelic">炼器阁</button>
+      </div>
+      <div id="relicList" style="display:none;width:100%;flex-direction:column;gap:4px"></div>
     </div>
     <details id="realmList">
       <summary>境界一览 · 点击展开</summary>
@@ -655,10 +663,11 @@ function expNeed(s){
   return Math.round(e*k);
 }
 function bdChance(s,lv){
-  if(lv>=10)return clamp((.025+.045*Math.max(0,s.zz-4)+s.C.rt*.025+s.mods.brk*.3)*(s.C.di||1), .025,.45); /* 大帝劫：天堑中的天堑——资质<5 几乎照面即死，资质9+好体质才配问鼎 */
+  const ero=s.flags&&s.flags.erosion>=60?0.9:1; /* 黑暗侵蚀≥60：道基不稳 */
+  if(lv>=10)return clamp(((.025+.045*Math.max(0,s.zz-4)+s.C.rt*.025+s.mods.brk*.3)*(s.C.di||1))*ero, .025,.45); /* 大帝劫：天堑中的天堑——资质<5 几乎照面即死，资质9+好体质才配问鼎 */
   /* 常规突破：境界有「资质+3」的根骨上限，越级缺口每大 1 层成功率 -11% */
   const gap=Math.max(0,(lv+1)-(s.zz+3));
-  return clamp(.46+s.zz*.04+s.C.rt*.045+s.mods.brk-gap*.11, .10,.92);
+  return clamp((.46+s.zz*.04+s.C.rt*.045+s.mods.brk-gap*.11)*ero, .10,.92);
 }
 function hiddenEl(s){
   const bt=s.bt;
@@ -696,13 +705,14 @@ function rollLife(baseState,meta){ // meta=局外轮回加成（UI 传入；sim 
   // ---------- 状态 ----------
   const m={luck:1,gain:1,pw:1,pw0:0,life:0,brk:0,halve:0,dodge:0,yao:1,yuan:1,luo:0,save:0,def:0,late:0,gao:0,evil:0,zz:zz};
   const s={era:era,born:born,zz:zz,bt:c.n,C:c,talents:talents,mods:m,
-    age:10,level:0,exp:0,power:0,maxLife:60,big:[],flags:{},rng:R,seen:{},
+    age:10,level:0,exp:0,power:0,maxLife:60,big:[],flags:{erosion:0,bossFought:false},rng:R,seen:{},
     finish:null,hidden:null};
   s.power=Math.round(zz*2+(born.fx?(born.fx.p0||0):0)+(c.pw0||0)+(born.fx?0:0));
   s.bornRt=1+((born.fx&&born.fx.rt)||0); /* 出身悟性（rt 原为死字段，接入） */
   // 模组结算
   m.luck*=c.luck;
   if(born.fx&&born.fx.lk)m.luck*=(1+(born.fx.lk||0)); /* 出身气运（lk 原为死字段，接入） */
+  if(meta&&meta.relic&&meta.relic.luck)m.luck*=(1+meta.relic.luck); /* 帝兵随身：气运 */
   if(c.halve)m.halve+=c.halve;
   for(const t of talents){
     const k=t.k,f=t.f;
@@ -727,7 +737,9 @@ function rollLife(baseState,meta){ // meta=局外轮回加成（UI 传入；sim 
   s.power+=m.pw0;
   if(zz>=8)s.power+=Math.round((zz-7)*25); /* 天资（8-10）额外战力：资质不只是进度条 */
   if(meta)s.power+=meta.initPower||0; /* 局外反哺：初始战力 */
+  if(meta&&meta.relic)s.power+=meta.relic.atk||0; /* 帝兵随身：初始战力 */
   s.maxLife=80+c.lf+m.life+(born.fx?((born.fx.lf||0)+ (born.fx.life||0)):0)+(meta?(meta.initLife||0):0); /* 局外反哺：初始寿元 */
+  if(meta&&meta.relic)s.maxLife+=meta.relic.life||0; /* 帝兵随身：寿元 */
   s.maxLife=Math.max(20,s.maxLife);
   const zzStr=['极差','平庸','普通','尚可','中上','上佳','极佳','天才','天纵','妖孽'][zz-1];
   s.intro=[
@@ -747,6 +759,7 @@ function breakTo(s,lv,logs){
   s.power=Math.round(R.pw>1?s.power*(1+(R.pw-1)*.8):s.power)+60*lv*lv; /* ×pw 软化：防战力三级跳 */
   if(R.lf>0)s.maxLife+=R.lf;
   s.exp=0;
+  if(s.flags)s.flags.wounded=0; /* 突破重塑：旧伤自愈（血洒尘埃不再一人独大） */
 }
 
 /* 年度主循环 */
@@ -835,6 +848,7 @@ function tickYear(s){
         const dmgv=Math.round(dmg*(1-red)*(1.7-s.zz*.09)*(1+gap*.3)); /* 反噬随资质/越级缺口放大：低资质硬闯=烧寿元 */
         s.maxLife=Math.max(12,s.maxLife-dmgv);
         s.exp=need*.45;s.power=Math.round(s.power*.93);
+        s.flags.erosion=Math.min(100,(s.flags.erosion||0)+4+lv*.3); /* 突破反噬：黑暗侵入 */
         logs.push({a,k:'huo',t:'突破之际，功亏一篑。你遭到反噬，寿元-'+dmgv+(m.halve>0?'（劫难之躯，伤势去其大半）':'')+'。'});
         if(R()<.05&&lv>=4){s.level=lv-1;s.exp=0;s.power=Math.round(s.power*.75);logs.push({a,k:'huo',t:'道基崩裂一角——境界跌落。你抚着旧伤，把一口气咽了回去。'});}
       }
@@ -890,6 +904,7 @@ function tickYear(s){
             s.maxLife=Math.max(12,s.maxLife-dmg);
             s.power=Math.round(s.power*.95);
             s.flags.wounded=1;
+            s.flags.erosion=Math.min(100,(s.flags.erosion||0)+2); /* 战败负伤：黑暗渐入 */
             failTxt='你没能挡住——重伤，寿元-'+Math.round(dmg)+'。';
           }
         }else{
@@ -910,6 +925,29 @@ function tickYear(s){
           logs.push({a,k:ev.k,pg:ev.k==='yu'?Math.round((f.p||0)*1):0,g:ev.g?1:0,bigFlag:(ev.g?1:0),t:txt});
           if(ev.g)s.big.push({a:a,t:txt});
         }
+      }
+    }
+  }
+  // ===== 黑暗侵蚀 & 纪元 Boss =====
+  if(!dead&&!winEnd){
+    if(a>250)s.flags.erosion=Math.min(100,s.flags.erosion+0.35);
+    else if(a>150)s.flags.erosion=Math.min(100,s.flags.erosion+0.2);
+    else if(a>80)s.flags.erosion=Math.min(100,s.flags.erosion+0.08);
+    if(s.flags.erosion>=100&&!s.flags.bossFought&&s.level>=7){
+      s.flags.bossFought=1;
+      const bn=(s.level<=13?[0,0,0,0,0,0,0,44000,86000,161000,300000,640000,2200000,4700000][s.level]:4700000)||0; /* 纪元Boss门槛：当时战力 P60 附近，胜负靠一把镰刀 */
+      if(s.power>=bn){
+        s.flags.erosion=0;
+        s.power+=Math.round(bn*.3);s.maxLife+=50;
+        s.big.push({a:a,t:'击退纪元大清算'});
+        logs.push({a,k:'big',g:1,t:'蚀元毕合——纪元黑暗大清算压城。你浴血而前，将它逐回地渊。万灵额首，侵蚀归零，寿元+50。'});
+      }else{
+        const dmg=Math.round(s.maxLife*.3);
+        s.maxLife=Math.max(12,s.maxLife-dmg);
+        s.flags.erosion=60;
+        s.flags.wounded=1;
+        logs.push({a,k:'huo',t:'黑暗重创了你——寿元-'+dmg+'。你抱着残躯退出战圈，侵蚀回落至 60。'});
+        if(s.maxLife<=12){dead=true;dyEnd='an';}
       }
     }
   }
@@ -996,10 +1034,11 @@ let dust=0,best=0;
 try{dust=+(localStorage.getItem('ztDust')||0);best=+(localStorage.getItem('ztBest')||0);}catch(e){}
 $('dust').textContent=dust?('已走过 '+dust+' 世尘缘'):'第一缕尘缘';
 /* ---------- 局外轮回（尘缘点反哺，仅 UI 层与 localStorage 交互） ---------- */
-let META={points:0,highProb:0,initPower:0,initLife:0,zzProb:0,totalExp:0,rows:{}};
+let META={points:0,highProb:0,initPower:0,initLife:0,zzProb:0,totalExp:0,rows:{},relics:[],activeRelic:-1};
 try{const d=localStorage.getItem('ztMeta');if(d){const p=JSON.parse(d);for(const k in p)META[k]=p[k];}}catch(e){}
 /* 旧存档迁移：由效果反推已购次数，成本递增才生效 */
 if(!META.rows){META.rows={high:Math.round((META.highProb||0)/1.5),pw:Math.round((META.initPower||0)/5),life:Math.round((META.initLife||0)/3),zz:Math.round((META.zzProb||0)/1)};}
+META.relics=META.relics||[];if(META.activeRelic===undefined)META.activeRelic=-1;
 function saveMeta(){try{localStorage.setItem('ztMeta',JSON.stringify(META));}catch(e){}}
 function calcLevel(){
   let need=50,lv=1,exp=META.totalExp||0;
@@ -1202,7 +1241,7 @@ function renderCards(){
     '<div class="card wide"><div class="ct">体质 · <span style="color:'+rz[1]+'">'+rz[0]+'</span></div><div class="c1" style="color:'+cdTag(s.C)+'">'+s.C.n+'</div><div class="c2">'+s.C.note+'</div></div>';
   $('talents').innerHTML=s.talents.map(function(t){return '<span class="tchips">'+t.n+' · '+t.d+'</span>';}).join('');
 }
-function fresh(){cur=Engine.rollLife({seed:(Date.now()>>>0)^((Math.random()*1048576)|0)},META);renderCards();}
+function fresh(){cur=Engine.rollLife({seed:(Date.now()>>>0)^((Math.random()*1048576)|0)},metaWithRelic());renderCards();}
 $('btnStart').onclick=function(){fresh();$('cardsWrap').style.display='flex';$('btnStart').style.display='none';};
 $('btnDip').onclick=function(){
   if(dipCnt>0){dipCnt--;fresh();}
@@ -1225,9 +1264,52 @@ $('paths').addEventListener('click',function(e){
   curPath=+b.dataset.pi;renderPathUI();
 });
 renderPathUI();
+/* ---------- 帝兵炼器（每世 Lv9+ 铸一件；20 尘缘点随身，对后续世生效） ---------- */
+const RELIC_NAMES=['荒天剑','无始钟','青帝鼎','狠人面具','混沌珠','帝塔','轮回镜','圣体甲'];
+const RELIC_RARI=['凡品','灵品','圣品','帝品','仙品'];
+function forgeRelic(s){
+  const ri=Math.max(0,Math.min(4,Math.floor((s.level-9)/1.5+Math.random()*2)));
+  const base=200+s.level*80;
+  const mult=[1,2,4,8,15][ri];
+  return {name:RELIC_NAMES[(Math.random()*RELIC_NAMES.length)|0],rarity:RELIC_RARI[ri],
+    atk:Math.round(base*mult),life:Math.min(80,Math.round((s.maxLife-80)*.06*mult)),luck:+(.02+ri*.015).toFixed(3)};
+}
+function refreshRelic(){
+  const rs=META.relics||[],ai=META.activeRelic;
+  $('relicCount').textContent=rs.length;
+  $('relicActive').textContent=(ai>=0&&rs[ai])?('随身：'+rs[ai].name+'·'+rs[ai].rarity):'未随身';
+}
+function renderRelicList(){
+  const rs=META.relics||[],ai=META.activeRelic;
+  const box=$('relicList');if(!box)return;
+  if(!rs.length){box.innerHTML='<div style="color:#565b6e;font-size:11px;line-height:1.9">每世达到圣人境（Lv.9）自动炼制一件帝兵。<br>随身之兵对本世生效：初始战力 / 寿元 / 气运；更换随身需再付 20 点。</div>';return;}
+  box.innerHTML=rs.map(function(r,i){
+    return '<div class="rk'+(i===ai?' top':'')+'"><b>'+r.rarity+'</b><span>'+r.name+' · 战力+'+r.atk+' · 寿元+'+r.life+' · 气运+'+Math.round(r.luck*100)+'%</span>'+
+      '<span class="rk2">'+(i===ai?'已随身':'<button class="btn btn-sm" data-rid="'+i+'" style="font-size:10px;padding:2px 10px">随身（20点）</button>')+'</span></div>';
+  }).join('');
+}
+$('btnRelic').onclick=function(){
+  const box=$('relicList');
+  if(box.style.display==='flex'){box.style.display='none';return;}
+  renderRelicList();
+  box.style.display='flex';
+};
+$('relicList').addEventListener('click',function(e){
+  const b=e.target.closest('[data-rid]');if(!b)return;
+  const i=+b.dataset.rid;
+  if((META.points||0)<20){alert('尘缘点不足（需 20 点随身）！');return;}
+  META.points-=20;META.activeRelic=i;saveMeta();updateMetaUI();refreshRelic();renderRelicList();
+});
+function metaWithRelic(){
+  const m2=Object.assign({},META);
+  const rs=META.relics||[];
+  if(META.activeRelic>=0&&rs[META.activeRelic])m2.relic=rs[META.activeRelic];
+  return m2;
+}
+refreshRelic();
 $('btnGo').onclick=beginLife;
 function beginLife(){
-  S=Engine.rollLife({seed:(Date.now()>>>0)^((Math.random()*1048576)|0)},META);
+  S=Engine.rollLife({seed:(Date.now()>>>0)^((Math.random()*1048576)|0)},metaWithRelic());
   // 受重选影响不大：开局直接使用当前抽卡结果
   if(cur){S=cur;cur=null;}
   /* 应用天命之路 */
@@ -1257,6 +1339,10 @@ function statUp(){
   const stl=Engine.statLine(S);
   $('stAge').innerHTML=S.age+'<span style="font-size:12px;color:var(--dim)"> / '+Engine.fmt(S.maxLife)+'</span>';
   $('stLv').textContent=(S.level===0?'凡人':Engine.REALMS[S.level].n[S.era])+' · Lv.'+S.level; /* 共0-13层，Lv.11=大帝 */
+  const er=(S.flags.erosion||0);
+  const erEl=$('stEro');
+  erEl.textContent='侵蚀 '+Math.round(er)+(er>=60?' ⚠':'');
+  erEl.style.color=er>=100?'#ff6b5e':(er>=60?'#f2c94c':'var(--dim)');
   $('expfill').style.width=Math.min(100,stl.pct)+'%';
   $('stPw').textContent=Engine.fmt(S.power);
   $('stZz').textContent=S.zz+' · '+Engine.ERA_NAME[S.era].slice(0,2);
@@ -1332,6 +1418,15 @@ function showEnd(id){
   const reward=Math.max(1,Math.floor((S.level+1)*2+Math.min(12,S.power/30000)+Math.min(6,S.age/30)));
   addPoints(reward);
   saveRank(); /* 本机排行榜记录 */
+  /* 帝兵炼器：圣人（Lv9+）之世留一件遗泽 */
+  let relicDisp='';
+  if(S.level>=9){
+    META.relics=META.relics||[];
+    const relic=forgeRelic(S);
+    META.relics.push(relic);
+    saveMeta();refreshRelic();
+    relicDisp=' · 帝兵入库：'+relic.name+'【'+relic.rarity+'】战力+'+relic.atk;
+  }
   /* 解锁结局与成就 */
   const newA=[];
   if(ACH.ends.indexOf(id)<0){ACH.ends.push(id);newA.push(Engine.ENDS[id].n);}
@@ -1344,7 +1439,7 @@ function showEnd(id){
     if(a.chk(S,ctx,winf)&&ACH.ach.indexOf(a.id)<0){ACH.ach.push(a.id);newA.push(a.n);}
   });
   if(newA.length){saveAch();renderAch();}
-  $('endTip').textContent=(best>=10?'你已悟出【祭道之上】之路！':'累计 '+dust+' 世 · 最高评分 '+best)+' · 获得 '+reward+' 尘缘点'+(newA.length?' — 新解锁：'+newA.join('、')+'！':'');
+  $('endTip').textContent=(best>=10?'你已悟出【祭道之上】之路！':'累计 '+dust+' 世 · 最高评分 '+best)+' · 获得 '+reward+' 尘缘点'+(newA.length?' — 新解锁：'+newA.join('、')+'！':'')+(relicDisp||'');
   $('end').style.display='flex';
 }
 $('btnRe').onclick=resetAll;
